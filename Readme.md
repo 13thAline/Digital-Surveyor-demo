@@ -126,3 +126,29 @@ Depth Est.	ZoeDepth	Metric depth estimation to measure how deep a dent is.
     Fraud Detection: AI analysis of metadata to prevent re-uploading old photos.
 
     AR Overlay: Augmented Reality markers to guide the user to specific damage points.
+
+
+Running the Project
+
+
+1. AI Server (Python)
+cd ai-server
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+# Running on http://localhost:8000
+
+
+2. Backend (Node.js)
+cd backend
+npm install
+npm run dev
+# Running on http://localhost:3000
+
+
+
+3. Mobile App
+cd mobile-app
+npx expo start
+# Scan QR with Expo Go
