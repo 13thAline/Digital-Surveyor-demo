@@ -132,23 +132,26 @@ Running the Project
 
 
 1. AI Server (Python)
-cd ai-server
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
+
+cd ai-server<br>
+python -m venv venv<br>
+source venv/bin/activate<br>
+pip install -r requirements.txt<br>
+uvicorn main:app --reload<br>
 # Running on http://localhost:8000
 
 
 2. Backend (Node.js)
-cd backend
-npm install
-npm run dev
+
+cd backend<br>
+npm install<br>
+npm run dev<br>
 # Running on http://localhost:3000
 
 
 
 3. Mobile App
-cd mobile-app
-npx expo start
+
+cd mobile-app<br>
+npx expo start<br>
 # Scan QR with Expo Go
