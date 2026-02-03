@@ -1,8 +1,3 @@
-"""
-Digital Surveyor AI Server
-FastAPI server for vehicle damage detection using YOLOv8
-"""
-
 import os
 import uuid
 from pathlib import Path
