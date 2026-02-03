@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Assessment {
+  id        String   @id @default(uuid())
+  status    String
+  createdAt DateTime @default(now())
+  damages   Damage[]
+  pdfUrl    String?
+}
+
+model Damage {
+  id           String @id @default(uuid())
+  assessmentId String
+  part         String
+  type         String
+  severity     String
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+}
