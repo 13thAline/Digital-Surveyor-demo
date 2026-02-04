@@ -168,8 +168,8 @@ async def analyze(file: UploadFile = File(...)):
 
     if not damage_model: raise HTTPException(500, "YOLO model not loaded")
     
-    # 1. RUN YOLO
-    results = damage_model(str(file_path), conf=0.05, iou=0.50)
+    # 1. RUN YOLO - Only show detections with >25% confidence
+    results = damage_model(str(file_path), conf=0.25, iou=0.50)
     
     detections = []
     annotated_url = None

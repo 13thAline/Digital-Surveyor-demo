@@ -1,5 +1,12 @@
 // API Configuration
-export const API_URL = 'http://192.168.1.100:8000'; // Change to your AI server IP
+// Backend server (Node.js) for auth and analysis
+export const BACKEND_URL = 'http://10.1.59.37:5000';
+
+// AI server (Python/FastAPI) for serving static files (images)
+export const AI_SERVER_URL = 'http://10.1.59.37:8000';
+
+// For backward compatibility - points to backend for analysis
+export const API_URL = BACKEND_URL;
 
 // App Configuration
 export const APP_NAME = 'AutoAssess';
@@ -14,3 +21,7 @@ export const DEFAULT_LOCATION = {
     city: '',
     state: '',
 };
+
+// Auth Configuration
+export const TOKEN_STORAGE_KEY = '@auth_token';
+export const USER_STORAGE_KEY = '@user_data';

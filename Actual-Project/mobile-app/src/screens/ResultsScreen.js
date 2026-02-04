@@ -39,15 +39,15 @@ const ResultsScreen = ({ navigation, route }) => {
     const getOverallSeverity = () => {
         if (detections.length === 0) return null;
         const maxScore = Math.max(...detections.map(d => d.severityScore || 0));
-        if (maxScore >= 70) return { label: 'High Severity', color: colors.severity.high };
-        if (maxScore >= 40) return { label: 'Medium Severity', color: colors.severity.medium };
-        return { label: 'Low Severity', color: colors.severity.low };
+        if (maxScore > 50) return { label: 'Replace Required', color: colors.severity.high };
+        if (maxScore >= 20) return { label: 'May Need Repair', color: colors.severity.medium };
+        return { label: 'Minor Damage', color: colors.severity.low };
     };
 
     const severity = getOverallSeverity();
 
     const formatCurrency = (min, max) => {
-        return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+        return `₹${min.toLocaleString('en-IN')} - ₹${max.toLocaleString('en-IN')}`;
     };
 
     const saveReport = async () => {
@@ -80,13 +80,70 @@ const ResultsScreen = ({ navigation, route }) => {
         }
     };
 
-    const handleGeneratePDF = () => {
-        // For now, show an alert - PDF generation would require backend integration
-        Alert.alert(
-            'Generate PDF',
-            `Your PDF report will include:\n\n• Customer: ${user?.name || 'N/A'}\n• Location: ${user?.city || 'N/A'}, ${user?.state || 'N/A'}\n• Address: ${user?.address || 'N/A'}\n• Detected Issues: ${detections.length}\n• Estimated Cost: ${formatCurrency(costEstimate.total.min, costEstimate.total.max)}`,
-            [{ text: 'OK' }]
-        );
+    const [pdfLoading, setPdfLoading] = useState(false);
+
+    const handleGeneratePDF = async () => {
+        setPdfLoading(true);
+        try {
+            const { BACKEND_URL } = await import('../config/constants');
+
+            const response = await fetch(`${BACKEND_URL}/api/reports/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    detections,
+                    annotatedImageUrl,
+                    heatmapUrl,
+                    costEstimate,
+                    userDetails: {
+                        name: user?.name,
+                        email: user?.email,
+                        phone: user?.phone,
+                        city: user?.city,
+                        state: user?.state,
+                        address: user?.address
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate PDF');
+            }
+
+            const data = await response.json();
+            const pdfDownloadUrl = `${BACKEND_URL}${data.pdfUrl}`;
+
+            // Ask user if they want to download/view the PDF
+            Alert.alert(
+                '✅ PDF Generated',
+                `Your damage assessment report is ready!\n\n` +
+                `• Customer: ${user?.name || 'N/A'}\n` +
+                `• Issues Found: ${detections.length}\n` +
+                `• Cost: ${formatCurrency(costEstimate.total.min, costEstimate.total.max)}`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Download PDF',
+                        onPress: () => Linking.openURL(pdfDownloadUrl)
+                    }
+                ]
+            );
+
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            Alert.alert(
+                'Report Summary',
+                `• Customer: ${user?.name || 'N/A'}\n` +
+                `• Location: ${user?.city || 'N/A'}, ${user?.state || 'N/A'}\n` +
+                `• Issues Found: ${detections.length}\n` +
+                `• Estimated Cost: ${formatCurrency(costEstimate.total.min, costEstimate.total.max)}`,
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setPdfLoading(false);
+        }
     };
 
     const handleFindRepairShop = () => {
@@ -228,9 +285,19 @@ const ResultsScreen = ({ navigation, route }) => {
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.pdfButton} onPress={handleGeneratePDF}>
-                        <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-                        <Text style={styles.pdfButtonText}>PDF</Text>
+                    <TouchableOpacity
+                        style={[styles.pdfButton, pdfLoading && styles.pdfButtonDisabled]}
+                        onPress={handleGeneratePDF}
+                        disabled={pdfLoading}
+                    >
+                        <Ionicons
+                            name={pdfLoading ? "hourglass-outline" : "document-text-outline"}
+                            size={20}
+                            color={pdfLoading ? colors.textSecondary : colors.primary}
+                        />
+                        <Text style={[styles.pdfButtonText, pdfLoading && styles.pdfButtonTextDisabled]}>
+                            {pdfLoading ? 'Generating...' : 'PDF'}
+                        </Text>
                     </TouchableOpacity>
 
                     <Button
@@ -430,13 +497,13 @@ const styles = StyleSheet.create({
     },
     actionButtons: {
         flexDirection: 'row',
-        
+
     },
     pdfButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        
+
         backgroundColor: colors.surface,
         borderWidth: 1.5,
         borderColor: colors.primary,
@@ -447,6 +514,13 @@ const styles = StyleSheet.create({
     pdfButtonText: {
         fontSize: 16, fontWeight: '600',
         color: colors.primary,
+    },
+    pdfButtonDisabled: {
+        borderColor: colors.border,
+        backgroundColor: colors.surfaceSecondary,
+    },
+    pdfButtonTextDisabled: {
+        color: colors.textSecondary,
     },
     repairButton: {
         flex: 1,

@@ -14,21 +14,21 @@ const DamageItem = ({
     } = damage || {};
 
     const getSeverityInfo = (score) => {
-        if (score >= 70) {
+        if (score > 50) {
             return {
-                label: 'Needs Replacement',
+                label: 'Replace',
                 color: colors.severity.high,
                 icon: 'alert-circle',
             };
-        } else if (score >= 40) {
+        } else if (score >= 20) {
             return {
-                label: 'Major Repair',
+                label: 'May be repairable',
                 color: colors.severity.medium,
                 icon: 'alert-circle-outline',
             };
         } else {
             return {
-                label: 'Repairable',
+                label: 'Repairable (repaint)',
                 color: colors.severity.low,
                 icon: 'checkmark-circle',
             };

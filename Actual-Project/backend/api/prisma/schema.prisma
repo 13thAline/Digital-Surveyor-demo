@@ -6,15 +6,35 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// USER MANAGEMENT
+// ==========================================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  city      String
+  state     String
+  address   String?
+  createdAt DateTime @default(now())
+  reports   Report[]
+}
+
+// ==========================================
+// DAMAGE REPORTS
+// ==========================================
 model Report {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
-  costMin   Int
-  costMax   Int
+  costMin   Float
+  costMax   Float
   pdfUrl    String?
-
-  images  Image[]
-  damages Damage[]
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  images    Image[]
+  damages   Damage[]
 }
 
 model Image {
@@ -25,10 +45,32 @@ model Image {
 }
 
 model Damage {
-  id       String @id @default(uuid())
-  part     String
-  type     String
-  severity String
-  reportId String
-  report   Report @relation(fields: [reportId], references: [id])
+  id            String @id @default(uuid())
+  part          String
+  damageType    String
+  severityScore Float
+  depthEstimate Float?
+  reportId      String
+  report        Report @relation(fields: [reportId], references: [id])
+}
+
+// ==========================================
+// PRICING DATA
+// ==========================================
+model LaborCost {
+  id         String @id @default(uuid())
+  city       String @unique
+  state      String
+  hourlyRate Float  // INR per hour
+  tier       String // "metro", "tier1", "tier2", "tier3"
+}
+
+model PartPrice {
+  id        String   @id @default(uuid())
+  partName  String   @unique
+  minPrice  Float    // INR
+  maxPrice  Float    // INR
+  avgPrice  Float    // INR
+  category  String   // "body", "glass", "lights", "mechanical"
+  updatedAt DateTime @default(now())
 }

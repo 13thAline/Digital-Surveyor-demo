@@ -18,7 +18,7 @@ const ReportCard = ({
 
     const formatCost = (min, max) => {
         if (min === 0 && max === 0) return 'Pending';
-        return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+        return `₹${min.toLocaleString('en-IN')} - ₹${max.toLocaleString('en-IN')}`;
     };
 
     return (
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     dateRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        
+
         marginBottom: spacing.xs,
     },
     date: {
