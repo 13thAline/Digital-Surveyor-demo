@@ -23,6 +23,9 @@ YOLO_MODEL_PATH = MODEL_DIR / "best.pt"
 ZOE_REPO = "isl-org/ZoeDepth"
 ZOE_MODEL_TYPE = "ZoeD_N" 
 
+if UPLOAD_DIR.exists():
+    import shutil
+    shutil.rmtree(UPLOAD_DIR)
 UPLOAD_DIR.mkdir(exist_ok=True)
 MODEL_DIR.mkdir(exist_ok=True)
 
@@ -31,7 +34,7 @@ depth_model = None
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ==========================================
-# NEW DATA MODELS (List Support)
+# DATA MODELS
 # ==========================================
 class SingleDetection(BaseModel):
     partDetected: str
@@ -44,13 +47,7 @@ class SingleDetection(BaseModel):
 class MultiDamageResponse(BaseModel):
     detections: List[SingleDetection]
     annotatedImageUrl: Optional[str] = None
-    heatmapUrl: Optional[str] = None
-
-class HealthResponse(BaseModel):
-    status: str
-    yolo_loaded: bool
-    zoe_loaded: bool
-    device: str
+    heatmapUrl: Optional[str] = None  # This is now the "AR" Composite Image
 
 # ==========================================
 # MODEL LOADING
@@ -88,45 +85,78 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
-def get_severity_from_depth(depth_map, bbox):
-    x, y, w, h = int(bbox['x']), int(bbox['y']), int(bbox['width']), int(bbox['height'])
-    if w <= 0 or h <= 0: return 0.0
-    roi = depth_map[y:y+h, x:x+w]
-    if roi.size == 0: return 0.0
-    depth_variance = np.std(roi)
-    return float(round(min(100, (depth_variance * 500)), 2))
+def get_severity_from_depth(depth_crop):
+    """Calculates severity from a specific depth crop."""
+    if depth_crop.size == 0: return 0.0
+    
+    # Measure variance (roughness) and range (depth difference)
+    variance = np.std(depth_crop)
+    amplitude = np.max(depth_crop) - np.min(depth_crop)
+    
+    # Combined score
+    raw_score = (variance * 100) + (amplitude * 50)
+    return float(round(min(100, raw_score), 2))
 
-def create_heatmap(image_path, depth_map, file_id):
-    plt.figure(figsize=(10, 10))
-    plt.imshow(depth_map, cmap='magma')
-    plt.axis('off')
-    heatmap_filename = f"{file_id}_heatmap.jpg"
-    plt.savefig(UPLOAD_DIR / heatmap_filename, bbox_inches='tight', pad_inches=0)
-    plt.close()
-    return f"/uploads/{heatmap_filename}"
+def create_composite_heatmap(original_path, depth_map, boxes, file_id):
+    """
+    Creates a single image where ONLY the bounding boxes are replaced 
+    with their heatmap versions.
+    """
+    # 1. Read Original Image
+    original_img = cv2.imread(str(original_path))
+    if original_img is None: return None
+
+    # 2. Resize Depth Map to match Original Image exactly
+    # ZoeDepth outputs different sizes, so we must align them
+    h, w = original_img.shape[:2]
+    depth_resized = cv2.resize(depth_map, (w, h))
+
+    # 3. Create a canvas (copy of original)
+    composite_img = original_img.copy()
+
+    # 4. Iterate over boxes and "paint" the heatmap
+    for box in boxes:
+        x, y, bw, bh = int(box['x']), int(box['y']), int(box['width']), int(box['height'])
+        
+        # Clamp coordinates
+        x = max(0, x); y = max(0, y)
+        bw = min(bw, w - x); bh = min(bh, h - y)
+        if bw <= 0 or bh <= 0: continue
+
+        # Extract Depth ROI
+        depth_roi = depth_resized[y:y+bh, x:x+bw]
+
+        # Normalize ROI to 0-255 for color mapping
+        # We normalize *locally* to maximize contrast for this specific dent
+        norm_roi = cv2.normalize(depth_roi, None, 0, 255, cv2.NORM_MINMAX)
+        norm_roi = norm_roi.astype(np.uint8)
+
+        # Apply Colormap (Magma is great for depth)
+        heatmap_patch = cv2.applyColorMap(norm_roi, cv2.COLORMAP_MAGMA)
+
+        # Paste it back into the composite image
+        composite_img[y:y+bh, x:x+bw] = heatmap_patch
+
+        # Optional: Draw a white border around the patch to make it pop
+        cv2.rectangle(composite_img, (x, y), (x+bw, y+bh), (255, 255, 255), 2)
+
+    # 5. Save the final result
+    filename = f"{file_id}_composite.jpg"
+    save_path = UPLOAD_DIR / filename
+    cv2.imwrite(str(save_path), composite_img)
+    
+    return f"/uploads/{filename}"
 
 # ==========================================
-# ROUTES
+# MAIN ROUTE
 # ==========================================
-@app.get("/health", response_model=HealthResponse)
-def health():
-    return {
-        "status": "active",
-        "yolo_loaded": damage_model is not None,
-        "zoe_loaded": depth_model is not None,
-        "device": device
-    }
-
 @app.post("/analyze", response_model=MultiDamageResponse)
 async def analyze(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
@@ -136,68 +166,74 @@ async def analyze(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(contents)
 
-    if not damage_model:
-        raise HTTPException(500, "YOLO model not loaded")
+    if not damage_model: raise HTTPException(500, "YOLO model not loaded")
     
     # 1. RUN YOLO
-    results = damage_model(str(file_path), conf=0.15) # Lower confidence to find more damages
+    results = damage_model(str(file_path), conf=0.05, iou=0.50)
     
     detections = []
     annotated_url = None
-    heatmap_url = None
+    composite_url = None
     
-    # 2. RUN ZOEDEPTH (Once for the whole image)
+    # 2. RUN ZOEDEPTH (Full Image)
     depth_numpy = None
     if depth_model:
         pil_img = Image.open(file_path).convert("RGB")
-        depth_tensor = depth_model.infer_pil(pil_img)
-        depth_numpy = depth_tensor
-        heatmap_url = create_heatmap(str(file_path), depth_numpy, file_id)
+        depth_numpy = depth_model.infer_pil(pil_img)
 
-    # 3. PROCESS EACH BOX (The Loop)
     if results and len(results[0].boxes) > 0:
         r = results[0]
         
-        # Save Annotated Image with ALL boxes
+        # Save Annotated (Bounding Boxes Only)
         annotated_name = f"{file_id}_annotated.jpg"
         r.save(filename=str(UPLOAD_DIR / annotated_name))
         annotated_url = f"/uploads/{annotated_name}"
 
+        # Collect boxes for the composite image
+        boxes_for_heatmap = []
+
         for box in r.boxes:
             c = box.xyxy[0].tolist()
-            detected_class = r.names[int(box.cls)]
-            confidence = float(box.conf)
             bbox = {
                 "x": c[0], "y": c[1], 
                 "width": c[2] - c[0], "height": c[3] - c[1]
             }
+            boxes_for_heatmap.append(bbox)
 
-            # Calculate specific severity for THIS box
             severity = 0.0
             depth_val = 0.0
-            
+
             if depth_numpy is not None:
-                severity = get_severity_from_depth(depth_numpy, bbox)
-                # Estimate depth
+                # Resize depth to match image for accurate calculations
+                pil_w, pil_h = pil_img.size
+                depth_resized = cv2.resize(depth_numpy, (pil_w, pil_h))
+                
+                # Extract Crop
                 x, y, w, h = int(bbox['x']), int(bbox['y']), int(bbox['width']), int(bbox['height'])
-                if w > 0 and h > 0:
-                    roi = depth_numpy[y:y+h, x:x+w]
-                    if roi.size > 0:
-                        depth_val = float(np.max(roi) - np.min(roi))
+                x = max(0, x); y = max(0, y) # safety
+                depth_crop = depth_resized[y:y+h, x:x+w]
+
+                if depth_crop.size > 0:
+                    severity = get_severity_from_depth(depth_crop)
+                    depth_val = float(np.max(depth_crop) - np.min(depth_crop))
 
             detections.append({
                 "partDetected": "Vehicle Part",
-                "damageType": detected_class,
+                "damageType": r.names[int(box.cls)],
                 "severityScore": severity,
-                "confidenceScore": confidence,
+                "confidenceScore": float(box.conf),
                 "depthEstimate": depth_val,
                 "boundingBox": bbox
             })
 
+        # 3. GENERATE COMPOSITE HEATMAP (The AR View)
+        if depth_numpy is not None:
+            composite_url = create_composite_heatmap(file_path, depth_numpy, boxes_for_heatmap, file_id)
+
     return {
         "detections": detections,
         "annotatedImageUrl": annotated_url,
-        "heatmapUrl": heatmap_url
+        "heatmapUrl": composite_url  # <-- This is your new "Hybrid" image
     }
 
 if __name__ == "__main__":

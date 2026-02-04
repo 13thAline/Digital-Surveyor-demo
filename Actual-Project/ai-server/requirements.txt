@@ -1,22 +1,17 @@
-# Digital Surveyor AI Server
-# Core dependencies
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-python-multipart>=0.0.6
+# Web Framework & Server
+fastapi
+uvicorn
+python-multipart
 
-# Image processing
-Pillow>=10.1.0
-numpy>=1.24.0
-opencv-python-headless>=4.8.0
+# AI & Computer Vision Core
+torch
+torchvision
+ultralytics
+opencv-python
+pillow
+numpy
+matplotlib
 
-# AI/ML Models
-torch>=2.1.0
-torchvision>=0.16.0
-ultralytics>=8.0.200
-
-# Optional: ZoeDepth (comment if you want to skip depth estimation)
-# timm>=0.9.0
-
-# Utilities
-python-dotenv>=1.0.0
-pydantic>=2.4.0
+# Critical Dependency for ZoeDepth
+# MUST be 0.6.13 to prevent "mutable default" crash on Python 3.11+
+timm==0.6.13
