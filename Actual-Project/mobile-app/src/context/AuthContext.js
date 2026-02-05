@@ -2,6 +2,27 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL, TOKEN_STORAGE_KEY, USER_STORAGE_KEY } from '../config/constants';
 
+// Helper function to add timeout to fetch requests
+const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        if (error.name === 'AbortError') {
+            throw new Error('Network request failed - connection timed out');
+        }
+        throw error;
+    }
+};
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -27,11 +48,11 @@ export const AuthProvider = ({ children }) => {
 
                 // Optionally validate token with backend
                 try {
-                    const response = await fetch(`${BACKEND_URL}/auth/me`, {
+                    const response = await fetchWithTimeout(`${BACKEND_URL}/auth/me`, {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
                         }
-                    });
+                    }, 5000);
 
                     if (!response.ok) {
                         // Token is invalid, clear storage
@@ -57,7 +78,7 @@ export const AuthProvider = ({ children }) => {
 
     const signUp = async (userData) => {
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/signup`, {
+            const response = await fetchWithTimeout(`${BACKEND_URL}/auth/signup`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -110,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
     const signIn = async (email, password) => {
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/login`, {
+            const response = await fetchWithTimeout(`${BACKEND_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -35,9 +35,6 @@ async function downloadImage(url) {
     }
 }
 
-/**
- * Format currency in INR
- */
 function formatINR(amount) {
     return `₹${amount.toLocaleString('en-IN')}`;
 }
@@ -91,9 +88,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
         const writeStream = fs.createWriteStream(filePath);
         doc.pipe(writeStream);
 
-        // ========================================
-        // HEADER
-        // ========================================
+
         doc.fontSize(24)
             .fillColor('#1E40AF')
             .text('Vehicle Damage Assessment Report', { align: 'center' });
