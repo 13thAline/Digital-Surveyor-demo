@@ -1,10 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'digital-surveyor-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-/**
- * Authentication middleware - verifies JWT token
- */
 export const authenticate = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;

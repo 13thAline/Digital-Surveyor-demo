@@ -5,18 +5,13 @@ import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'digital-surveyor-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '7d';
 
-/**
- * POST /auth/signup
- * Create a new user account
- */
 router.post('/signup', async (req, res) => {
     try {
         const { name, email, password, phone, city, state, address } = req.body;
 
-        // Validation
         if (!name || !email || !password || !city || !state) {
             return res.status(400).json({
                 error: 'Name, email, password, city, and state are required.'
@@ -29,7 +24,6 @@ router.post('/signup', async (req, res) => {
             });
         }
 
-        // Check if user already exists
         const existingUser = await prisma.user.findUnique({
             where: { email }
         });

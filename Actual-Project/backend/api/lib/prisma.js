@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/digital_surveyor';
+const connectionString = process.env.DATABASE_URL;
 
 // Create a PostgreSQL connection pool
 const pool = new pg.Pool({ connectionString });
