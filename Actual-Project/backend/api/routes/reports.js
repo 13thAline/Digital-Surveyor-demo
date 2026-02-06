@@ -49,6 +49,45 @@ function getSeverityInfo(score) {
 }
 
 /**
+ * GET /api/reports
+ * Get all reports for the authenticated user
+ */
+router.get('/', optionalAuth, async (req, res) => {
+    try {
+        // If user is authenticated, fetch their reports from the database
+        if (req.user) {
+            const reports = await prisma.report.findMany({
+                where: { userId: req.user.id },
+                include: {
+                    damages: true,
+                    images: true
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            return res.json({
+                success: true,
+                reports: reports.map(report => ({
+                    id: report.id,
+                    createdAt: report.createdAt,
+                    costMin: report.costMin,
+                    costMax: report.costMax,
+                    pdfUrl: report.pdfUrl,
+                    damages: report.damages,
+                    images: report.images.map(img => img.url)
+                }))
+            });
+        }
+
+        // For unauthenticated users, return empty (they use local storage)
+        res.json({ success: true, reports: [] });
+    } catch (error) {
+        console.error('Error fetching reports:', error);
+        res.status(500).json({ error: 'Failed to fetch reports' });
+    }
+});
+
+/**
  * POST /api/reports/generate
  * Generate PDF report with images, user details, and pricing
  */
