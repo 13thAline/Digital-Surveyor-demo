@@ -17,15 +17,14 @@ from ultralytics import YOLO
 # ==========================================
 # CONFIGURATION
 # ==========================================
-UPLOAD_DIR = Path("uploads")
-MODEL_DIR = Path("models")
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "uploads"
+MODEL_DIR = BASE_DIR / "models"
 YOLO_MODEL_PATH = MODEL_DIR / "best.pt"
 ZOE_REPO = "isl-org/ZoeDepth"
 ZOE_MODEL_TYPE = "ZoeD_N" 
 
-if UPLOAD_DIR.exists():
-    import shutil
-    shutil.rmtree(UPLOAD_DIR)
+# Saved assessments retain links to these images across server restarts.
 UPLOAD_DIR.mkdir(exist_ok=True)
 MODEL_DIR.mkdir(exist_ok=True)
 

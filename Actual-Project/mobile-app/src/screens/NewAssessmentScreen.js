@@ -68,7 +68,7 @@ const NewAssessmentScreen = ({ navigation }) => {
     const takePhoto = async () => {
         try {
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 quality: 0.8,
             });
@@ -85,7 +85,7 @@ const NewAssessmentScreen = ({ navigation }) => {
     const pickFromGallery = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsMultipleSelection: true,
                 quality: 0.8,
                 selectionLimit: MAX_PHOTOS - photos.length,

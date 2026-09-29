@@ -1,3 +1,4 @@
+import { createImageFormData, uploadImage } from './imageUpload';
 import { BACKEND_URL, AI_SERVER_URL } from '../config/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOKEN_STORAGE_KEY } from '../config/constants';
@@ -41,17 +42,7 @@ const getUserCity = async () => {
  */
 export const analyzeImage = async (imageUri) => {
     try {
-        const formData = new FormData();
-
-        // Get file extension from URI
-        const uriParts = imageUri.split('.');
-        const fileType = uriParts[uriParts.length - 1];
-
-        formData.append('file', {
-            uri: imageUri,
-            name: `photo.${fileType}`,
-            type: `image/${fileType}`,
-        });
+        const formData = await createImageFormData(imageUri);
 
         // Add city for pricing calculation
         const city = await getUserCity();
@@ -61,14 +52,7 @@ export const analyzeImage = async (imageUri) => {
         const authHeaders = await getAuthHeaders();
 
         // Route through backend (which proxies to AI server and adds pricing)
-        const response = await fetch(`${BACKEND_URL}/api/analyze`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                ...authHeaders
-            },
-        });
+        const response = await uploadImage(`${BACKEND_URL}/api/analyze`, formData, authHeaders);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -89,11 +73,11 @@ export const analyzeImage = async (imageUri) => {
             },
         };
     } catch (error) {
-        console.error('Analysis error:', error);
+        console.error(`Analysis request to ${BACKEND_URL}/api/analyze failed:`, error);
 
         // If backend fails, try direct AI server as fallback (no pricing)
         if (error.message.includes('Network request failed') || error.message === 'AI server is not available') {
-            console.log('Backend unavailable, trying direct AI server...');
+            console.log('Upload failed, trying direct AI server...');
             return await analyzeImageDirect(imageUri);
         }
 
@@ -109,24 +93,8 @@ export const analyzeImage = async (imageUri) => {
  */
 const analyzeImageDirect = async (imageUri) => {
     try {
-        const formData = new FormData();
-
-        const uriParts = imageUri.split('.');
-        const fileType = uriParts[uriParts.length - 1];
-
-        formData.append('file', {
-            uri: imageUri,
-            name: `photo.${fileType}`,
-            type: `image/${fileType}`,
-        });
-
-        const response = await fetch(`${AI_SERVER_URL}/analyze`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const formData = await createImageFormData(imageUri);
+        const response = await uploadImage(`${AI_SERVER_URL}/analyze`, formData);
 
         if (!response.ok) {
             throw new Error(`AI server error: ${response.status}`);
@@ -151,7 +119,7 @@ const analyzeImageDirect = async (imageUri) => {
             },
         };
     } catch (error) {
-        console.error('Direct AI analysis error:', error);
+        console.error(`Direct AI request to ${AI_SERVER_URL}/analyze failed:`, error);
         return {
             success: false,
             error: error.message,
@@ -173,6 +141,10 @@ export const analyzeMultipleImages = async (imageUris) => {
 
     for (const uri of imageUris) {
         const result = await analyzeImage(uri);
+        if (!result.success) {
+            // Do not show an empty successful assessment after a failed upload.
+            return result;
+        }
         if (result.success) {
             results.push(result.data);
             allDetections.push(...result.data.detections);

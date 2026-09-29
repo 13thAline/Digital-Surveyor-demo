@@ -3,3 +3,12 @@ node_modules
 .env
 
 /generated/prisma
+
+# Uploads directory - preserve folder but ignore uploaded images
+uploads/*
+!uploads/.gitkeep
+
+# Generated reports - preserve folder but ignore generated pdfs
+reports/*
+!reports/.gitkeep
+

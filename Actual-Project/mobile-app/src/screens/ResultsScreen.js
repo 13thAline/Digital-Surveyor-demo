@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import DamageItem from '../components/DamageItem';
+import { resolveImageUrl } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
 import { colors, typography, spacing, borderRadius, shadows } from '../styles/theme';
 
@@ -151,7 +152,7 @@ const ResultsScreen = ({ navigation, route }) => {
         Linking.openURL(`https://www.google.com/maps/search/${query}`);
     };
 
-    const displayImage = currentImage === 'annotated' ? annotatedImageUrl : heatmapUrl;
+    const displayImage = resolveImageUrl(currentImage === 'annotated' ? annotatedImageUrl : heatmapUrl);
 
     return (
         <SafeAreaView style={styles.container} >

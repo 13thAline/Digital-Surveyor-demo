@@ -1,3 +1,15 @@
 # YOLO Training Data & Results
 datasets/
 runs/
+
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+
+# Uploads directory - preserve folder but ignore uploaded images
+uploads/*
+!uploads/.gitkeep

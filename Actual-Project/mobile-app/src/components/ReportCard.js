@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveImageUrl } from '../config/constants';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, borderRadius, typography, spacing, shadows } from '../styles/theme';
@@ -29,7 +30,7 @@ const ReportCard = ({
         >
             <View style={styles.imageContainer}>
                 {thumbnail ? (
-                    <Image source={{ uri: thumbnail }} style={styles.image} />
+                    <Image source={{ uri: resolveImageUrl(thumbnail) }} style={styles.image} />
                 ) : (
                     <View style={styles.placeholderImage}>
                         <Ionicons name="car-outline" size={32} color={colors.textLight} />

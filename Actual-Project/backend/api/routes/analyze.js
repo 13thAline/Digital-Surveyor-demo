@@ -4,6 +4,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import prisma from '../lib/prisma.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { calculateRepairCost } from '../services/pricingService.js';
@@ -12,7 +13,7 @@ const router = express.Router();
 const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:8000';
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads');
+const uploadsDir = fileURLToPath(new URL('../uploads/', import.meta.url));
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -79,12 +80,12 @@ router.post('/', optionalAuth, upload.single('file'), async (req, res) => {
         // Calculate repair costs using our pricing algorithm
         const costEstimate = await calculateRepairCost(aiData.detections || [], city);
 
-        // Build response URLs (point to AI server for static files)
+        // Mobile clients resolve these paths against the reachable backend.
         const annotatedImageUrl = aiData.annotatedImageUrl
-            ? `${AI_SERVER_URL}${aiData.annotatedImageUrl}`
+            ? `/api/images/${path.basename(aiData.annotatedImageUrl)}`
             : null;
         const heatmapUrl = aiData.heatmapUrl
-            ? `${AI_SERVER_URL}${aiData.heatmapUrl}`
+            ? `/api/images/${path.basename(aiData.heatmapUrl)}`
             : null;
 
         // Optionally save report to database

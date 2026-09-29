@@ -22,3 +22,9 @@ logs/
 .env
 .env.local
 .env.*.local
+
+# Python / Virtual Environments
+venv/
+.venv/
+__pycache__/
+*.py[cod]

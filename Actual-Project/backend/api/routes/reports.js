@@ -24,7 +24,13 @@ if (!fs.existsSync(reportsDir)) {
  */
 async function downloadImage(url) {
     try {
-        const response = await axios.get(url, {
+        // Analysis image paths are also used when generating PDFs server-side.
+        const imageUrl = url.startsWith('/api/images/')
+            ? `${AI_SERVER_URL}/uploads/${path.basename(url)}`
+            : url.startsWith('/uploads/')
+                ? `http://127.0.0.1:${process.env.PORT || 5000}${url}`
+                : url;
+        const response = await axios.get(imageUrl, {
             responseType: 'arraybuffer',
             timeout: 10000
         });

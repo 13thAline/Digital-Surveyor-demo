@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import authRoutes from "./routes/auth.js";
 import analyzeRoutes from "./routes/analyze.js";
 import reportsRoutes from "./routes/reports.js";
+import imageRoutes from "./routes/images.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/auth", authRoutes);
 app.use("/api/analyze", analyzeRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/images", imageRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
